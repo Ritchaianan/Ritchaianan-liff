@@ -1,47 +1,234 @@
-function doGet(e) {
-  var ss = SpreadsheetApp.openById("10AZuV1hdJfdwfUCrJJi9Bhh4Cb0jqZh106RPowBxzQk");
-  var view = e.parameter.view;
-  var uid = e.parameter.userId;
-  var out = {};
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ฤทธิ์ชัยอนันต์ การยาง</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --deep-green: #0f2818;
+    --leaf-green: #1c4a2c;
+    --gold: #c9a24b;
+    --gold-bright: #e8c976;
+    --cream: #f3efe4;
+    --muted: #a9bfae;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
+    background: radial-gradient(ellipse at top, var(--leaf-green), var(--deep-green) 70%);
+    color: var(--cream);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 18px 60px; }
+  .brand { text-align: center; padding: 22px 0 18px; }
+  .brand .name { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; color: var(--gold-bright); }
+  .brand .tagline { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(201,162,75,0.35); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .hero-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .hero-row .label { font-size: 13px; color: var(--muted); }
+  .hero-row .value { font-size: 34px; font-weight: 700; color: var(--gold-bright); line-height: 1.1; }
+  .hero-row .unit { font-size: 13px; color: var(--muted); }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .stat { background: rgba(0,0,0,0.18); border-radius: 10px; padding: 12px 14px; }
+  .stat .n { font-size: 20px; font-weight: 700; color: var(--gold-bright); }
+  .stat .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  h2.section-title { font-size: 14px; color: var(--gold); font-weight: 700; margin: 22px 0 10px; }
+  .row { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; }
+  .row:last-child { border-bottom: none; }
+  .row .date { color: var(--muted); font-size: 12px; }
+  .row .main { color: var(--cream); }
+  .row .amt { color: var(--gold-bright); font-weight: 600; white-space: nowrap; }
+  .row a.receipt { color: var(--gold); font-size: 12px; text-decoration: underline; }
+  .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0; }
+  .status { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
+  .err { background: rgba(180,50,50,0.15); border: 1px solid rgba(200,80,80,0.4); border-radius: 10px; padding: 14px; font-size: 13px; color: #f0c8c8; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .field input {
+    width: 100%; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid rgba(201,162,75,0.4); background: rgba(0,0,0,0.2);
+    color: var(--cream); font-size: 15px; font-family: inherit;
+  }
+  .field input::placeholder { color: rgba(169,191,174,0.6); }
+  .btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color: #1a1200; font-weight: 700; font-size: 15px; cursor: pointer;
+  }
+  .btn:disabled { opacity: 0.6; }
+  .reg-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="name">ฤทธิ์ชัยอนันต์ การยาง</div>
+    <div class="tagline">Ritchaianan Co., Ltd. — เติบโตไปด้วยกัน</div>
+  </div>
+  <div id="content"><div class="status">กำลังโหลดข้อมูล...</div></div>
+</div>
 
-  var cust = ss.getSheetByName("ลูกค้า").getDataRange().getValues();
-  var found = false, custName, custPoints;
-  for (var i = 1; i < cust.length; i++) {
-    if (cust[i][0] === uid) {
-      found = true;
-      custName = cust[i][1];
-      custPoints = cust[i][3];
-      break;
+<script>
+const LIFF_ID = "2011543541-2fqJyjVc";
+const API_URL = "https://script.google.com/macros/s/AKfycbzvt8NfcWycaUnr57u_Y9A6DYIDoaO6pvXUATRRMr5nDVK20lJ9CHpYL2HsVXEx9Cs72w/exec";
+
+let currentProfile = null;
+
+function getView() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("view") === "sales" ? "sales" : "reward";
+}
+
+function money(n) {
+  return Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderError(msg) {
+  document.getElementById("content").innerHTML = `<div class="err">${msg}</div>`;
+}
+
+function renderRegister(profile) {
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="hero-row" style="margin-bottom:14px;">
+        <div><div class="label">สวัสดีคุณ ${profile.displayName || "ลูกค้าใหม่"}</div></div>
+      </div>
+      <div style="font-size:13px; color: var(--muted); margin-bottom:16px;">
+        ยังไม่พบข้อมูลของคุณในระบบ กรุณากรอกข้อมูลเพื่อลงทะเบียนเป็นสมาชิกครั้งแรก
+      </div>
+      <div class="field">
+        <label>ชื่อ-นามสกุล</label>
+        <input type="text" id="regName" placeholder="กรอกชื่อของคุณ" value="${profile.displayName || ''}">
+      </div>
+      <div class="field">
+        <label>เบอร์โทรศัพท์</label>
+        <input type="tel" id="regPhone" placeholder="08xxxxxxxx">
+      </div>
+      <button class="btn" id="regBtn" onclick="submitRegister()">ลงทะเบียน</button>
+      <div class="reg-note" id="regNote"></div>
+    </div>
+  `;
+}
+
+async function submitRegister() {
+  const name = document.getElementById("regName").value.trim();
+  const phone = document.getElementById("regPhone").value.trim();
+  const note = document.getElementById("regNote");
+  const btn = document.getElementById("regBtn");
+  if (!name || !phone) {
+    note.textContent = "กรุณากรอกชื่อและเบอร์โทรให้ครบ";
+    note.style.color = "#f0c8c8";
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "กำลังบันทึก...";
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "register", userId: currentProfile.userId, name, phone })
+    });
+    note.textContent = "ลงทะเบียนสำเร็จ กำลังโหลดข้อมูล...";
+    note.style.color = "var(--gold-bright)";
+    setTimeout(() => loadData(currentProfile.userId), 900);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "ลงทะเบียน";
+    note.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่";
+    note.style.color = "#f0c8c8";
+  }
+}
+
+function renderReward(data) {
+  const history = (data.history || []).slice().reverse();
+  let rows = history.length
+    ? history.map(h => `
+        <div class="row">
+          <div>
+            <div class="main">${h.reward ? "แลก: " + h.reward : "สะสมแต้ม"}</div>
+            <div class="date">${h.date || ""}</div>
+          </div>
+          <div class="amt">${h.earned ? "+" + h.earned : (h.used ? "-" + h.used : "")}</div>
+        </div>`).join("")
+    : `<div class="empty">ยังไม่มีประวัติการสะสมแต้ม</div>`;
+
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="hero-row">
+        <div>
+          <div class="label">สวัสดีคุณ ${data.name || "-"}</div>
+          <div class="value">${data.points ?? 0} <span class="unit">แต้ม</span></div>
+        </div>
+      </div>
+    </div>
+    <h2 class="section-title">ประวัติแต้ม</h2>
+    <div class="card">${rows}</div>
+  `;
+}
+
+function renderSales(data) {
+  const rows = data.records || [];
+  const rowsHtml = rows.length
+    ? rows.slice().reverse().map(r => `
+        <div class="row">
+          <div>
+            <div class="main">น้ำหนักยาง ${r.weight || 0} กก.</div>
+            <div class="date">${r.date || ""}</div>
+            ${r.receipt ? `<a class="receipt" href="${r.receipt}" target="_blank">ดูใบเสร็จ</a>` : ""}
+          </div>
+          <div class="amt">฿${money(r.amount)}</div>
+        </div>`).join("")
+    : `<div class="empty">ยังไม่มีรายการขาย</div>`;
+
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="hero-row">
+        <div>
+          <div class="label">ยอดขายสะสมทั้งหมด</div>
+          <div class="value">฿${money(data.totalAmount)}</div>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><div class="n">${data.totalWeight ?? 0} กก.</div><div class="l">น้ำหนักยางรวม</div></div>
+        <div class="stat"><div class="n">${data.count ?? 0} ครั้ง</div><div class="l">จำนวนครั้งที่ขาย</div></div>
+      </div>
+    </div>
+    <h2 class="section-title">รายการขายย้อนหลัง</h2>
+    <div class="card">${rowsHtml}</div>
+  `;
+}
+
+async function loadData(userId) {
+  const view = getView();
+  try {
+    const res = await fetch(`${API_URL}?view=${view}&userId=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    if (!data.found) {
+      renderRegister(currentProfile);
+      return;
     }
+    if (view === "reward") renderReward(data);
+    else renderSales(data);
+  } catch (e) {
+    renderError("ไม่สามารถโหลดข้อมูลได้ ลองใหม่อีกครั้ง หรือแจ้งเจ้าหน้าที่");
   }
-  out.found = found;
-  if (!found) {
-    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  if (view === "reward") {
-    out.name = custName; out.points = custPoints;
-    var hist = ss.getSheetByName("ประวัติแต้ม").getDataRange().getValues();
-    out.history = hist.filter(function(r, i){ return i > 0 && r[0] === uid; })
-      .map(function(r){ return {date:r[1], earned:r[2], used:r[3], reward:r[4]}; });
-  } else if (view === "sales") {
-    var s = ss.getSheetByName("ยอดขาย").getDataRange().getValues();
-    var rows = s.filter(function(r, i){ return i > 0 && r[0] === uid; });
-    out.records = rows.map(function(r){ return {date:r[1], weight:r[2], amount:r[3], receipt:r[4]}; });
-    out.totalAmount = rows.reduce(function(sum,r){ return sum + Number(r[3]||0); }, 0);
-    out.totalWeight = rows.reduce(function(sum,r){ return sum + Number(r[2]||0); }, 0);
-    out.count = rows.length;
-  }
-  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function doPost(e) {
-  var ss = SpreadsheetApp.openById("10AZuV1hdJfdwfUCrJJi9Bhh4Cb0jqZh106RPowBxzQk");
-  var data = JSON.parse(e.postData.contents);
-  if (data.action === "register") {
-    var sheet = ss.getSheetByName("ลูกค้า");
-    sheet.appendRow([data.userId, data.name, data.phone, 0]);
-    return ContentService.createTextOutput(JSON.stringify({success:true})).setMimeType(ContentService.MimeType.JSON);
+async function init() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const profile = await liff.getProfile();
+    currentProfile = profile;
+    loadData(profile.userId);
+  } catch (e) {
+    renderError("เชื่อมต่อ LINE ไม่สำเร็จ: " + e.message);
   }
-  return ContentService.createTextOutput(JSON.stringify({success:false})).setMimeType(ContentService.MimeType.JSON);
 }
+init();
+</script>
+</body>
+</html>
